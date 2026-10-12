@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scissors Paper Stone - Hall of Fame</title>
+  <style>
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 30px 15px;
+      margin: 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      flex: 1 1 340px;
+      box-sizing: border-box;
+    }
+    h1, h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+    .streak-box {
+      text-align: center;
+      background: #334155;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .streak-num {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #f97316;
+    }
+    .arena {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      font-size: 3rem;
+      margin: 20px 0;
+      background: #0f172a;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .fighter-label {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      text-align: center;
+      margin-top: 5px;
+    }
+    #result-msg {
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+      min-height: 30px;
+    }
+    .buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    button.choice-btn {
+      flex: 1;
+      padding: 15px 5px;
+      font-size: 1.1rem;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button.choice-btn:hover {
+      background: #f97316;
+    }
+    /* Leaderboard */
+    ol {
+      padding-left: 20px;
+      line-height: 1.8;
+    }
+    li {
+      margin-bottom: 6px;
+      font-size: 1rem;
+    }
+    .score-badge {
+      color: #f97316;
+      font-weight: bold;
+    }
+  </style>
+
+  <!-- Load Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Game Box -->
+    <div class="box">
+      <h1>Scissors Paper Stone</h1>
+
+      <div class="streak-box">
+        <div>Current Win Streak</div>
+        <div class="streak-num" id="streak-num">0</div>
+      </div>
+
+      <div class="arena">
+        <div>
+          <div id="player-hand">❔</div>
+          <div class="fighter-label">You</div>
+        </div>
+        <div style="font-size: 1.5rem; color: #64748b;">VS</div>
+        <div>
+          <div id="bot-hand">❔</div>
+          <div class="fighter-label">Bot</div>
+        </div>
+      </div>
+
+      <div id="result-msg">Choose your hand below!</div>
+
+      <div class="buttons">
+        <button class="choice-btn" onclick="play('stone')">🪨 Stone</button>
+        <button class="choice-btn" onclick="play('scissors')">✂️ Scissors</button>
+        <button class="choice-btn" onclick="play('paper')">📄 Paper</button>
+      </div>
+    </div>
+
+    <!-- Leaderboard Box -->
+    <div class="box">
+      <h2>🏆 Online Hall of Fame</h2>
+      <ol id="leaderboard">
+        <li>Connecting to Firebase...</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    // 1. Your Project Credentials
+    const firebaseConfig = {
+      apiKey: "AIzaSyDdjyYG6SP9X8WLGM1R7HiWHvt_BUvJJaE",
+      authDomain: "rock-scissors-paper-56fd1.firebaseapp.com",
+      projectId: "rock-scissors-paper-56fd1",
+      storageBucket: "rock-scissors-paper-56fd1.firebasestorage.app",
+      messagingSenderId: "777236719700",
+      appId: "1:777236719700:web:e6d0c158835e97aa6f65c1"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 2. Real-time Leaderboard Updates
+    db.collection("hall_of_fame")
+      .orderBy("streak", "desc")
+      .limit(10)
+      .onSnapshot((snapshot) => {
+        const list = document.getElementById("leaderboard");
+        if (snapshot.empty) {
+          list.innerHTML = "<li>No scores yet. Set a high score!</li>";
+          return;
+        }
+
+        let items = "";
+        snapshot.forEach((doc) => {
+          const entry = doc.data();
+          items += `<li>${entry.name} - <span class="score-badge">${entry.streak} wins</span></li>`;
+        });
+        list.innerHTML = items;
+      }, (error) => {
+        console.error("Firestore error:", error);
+        document.getElementById("leaderboard").innerHTML = "<li>(Offline / waiting for records)</li>";
+      });
+
+    // 3. Game Logic
+    let streak = 0;
+    const icons = { stone: "🪨", scissors: "✂️", paper: "📄" };
+
+    function play(playerChoice) {
+      const moves = ["stone", "scissors", "paper"];
+      const botChoice = moves[Math.floor(Math.random() * moves.length)];
+
+      document.getElementById("player-hand").textContent = icons[playerChoice];
+      document.getElementById("bot-hand").textContent = icons[botChoice];
+      const msg = document.getElementById("result-msg");
+
+      if (playerChoice === botChoice) {
+        msg.textContent = "It's a Tie! Keep going!";
+        msg.style.color = "#eab308";
+      } else if (
+        (playerChoice === "stone" && botChoice === "scissors") ||
+        (playerChoice === "scissors" && botChoice === "paper") ||
+        (playerChoice === "paper" && botChoice === "stone")
+      ) {
+        streak++;
+        msg.textContent = "You Win! Streak +1";
+        msg.style.color = "#22c55e";
+      } else {
+        msg.textContent = "Bot Won! Streak broken.";
+        msg.style.color = "#ef4444";
+
+        // If you had a streak, record it to Firebase
+        if (streak > 0) {
+          const name = prompt(`Great game! You won ${streak} in a row. Enter your name:`);
+          if (name) {
+            saveScore(name, streak);
+          }
+        }
+        streak = 0;
+      }
+
+      document.getElementById("streak-num").textContent = streak;
+    }
+
+    // 4. Save to Firestore
+    function saveScore(name, finalStreak) {
+      db.collection("hall_of_fame").add({
+        name: name.slice(0, 15),
+        streak: finalStreak,
+        time: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+  </script>
+</body>
+</html>
